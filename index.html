@@ -118,20 +118,49 @@
         <div class="value" id="det-ganancia">$0</div>
       </div>
       <div class="resumen-item">
-        <div class="label">Gan. potencial</div>
+        <div class="label">Por vender</div>
         <div class="value" id="det-ganancia-full">$0</div>
+      </div>
+      <div class="resumen-item">
+        <div class="label">Ing. si vendes todo</div>
+        <div class="value" id="det-ingreso-total">—</div>
+      </div>
+    </div>
+
+    <!-- Métricas amplias -->
+    <div class="card">
+      <h3>Resumen financiero</h3>
+      <div class="prod-grid det-grid">
+        <div><span>Costo promedio</span><br><strong id="det-costo-prom">$0</strong></div>
+        <div><span>Precio de venta</span><br><strong id="det-precio-venta">—</strong></div>
+        <div><span>Margen por unidad</span><br><strong id="det-margen-unit">—</strong></div>
+        <div><span>Margen %</span><br><strong id="det-margen-pct">—</strong></div>
+        <div><span>Ingresos totales</span><br><strong id="det-ingresos">$0</strong></div>
+        <div><span>Costo de vendido</span><br><strong id="det-costo-vendido">$0</strong></div>
+        <div><span>Valor stock (costo)</span><br><strong id="det-valor-costo">$0</strong></div>
+        <div><span>Valor stock (venta)</span><br><strong id="det-valor-venta">—</strong></div>
+        <div><span>Total proyectado</span><br><strong id="det-proyectado">$0</strong></div>
+        <div><span>ROI</span><br><strong id="det-roi">—</strong></div>
       </div>
     </div>
 
     <div class="card">
+      <h3>Movimiento</h3>
       <div class="prod-grid det-grid">
-        <div><span>Costo promedio</span><br><strong id="det-costo-prom">$0</strong></div>
-        <div><span>Precio de venta</span><br><strong id="det-precio-venta">—</strong></div>
         <div><span>Lotes</span><br><strong id="det-lotes">0</strong></div>
         <div><span>Unidades vendidas</span><br><strong id="det-vendidas">0</strong></div>
+        <div><span>Nº de ventas</span><br><strong id="det-num-ventas">0</strong></div>
+        <div><span>Última venta</span><br><strong id="det-ultima-venta">—</strong></div>
       </div>
     </div>
 
+    <!-- Lotes del producto -->
+    <div class="card">
+      <h3>Lotes</h3>
+      <div id="det-lista-lotes"></div>
+    </div>
+
+    <!-- Gráfico -->
     <div class="card">
       <h3>Ventas del producto</h3>
       <div id="detalle-chart-vacio" class="empty oculto" style="padding:20px 10px">Sin ventas aún</div>
@@ -140,8 +169,16 @@
       </div>
     </div>
 
+    <!-- Últimas ventas -->
     <div class="card">
-      <button class="btn btn-secondary" onclick="abrirModalPrecioDesdeDetalle()">Establecer precio de venta</button>
+      <h3>Últimas ventas</h3>
+      <div id="det-lista-ventas"></div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="card">
+      <button class="btn" onclick="ventaRapidaDesdeDetalle()">Vender este producto</button>
+      <button class="btn btn-secondary" onclick="abrirModalPrecioDesdeDetalle()" style="margin-top:10px">Establecer precio de venta</button>
       <button class="btn btn-danger" onclick="eliminarProductoDetalle()" style="margin-top:10px">Eliminar producto</button>
     </div>
   </div>

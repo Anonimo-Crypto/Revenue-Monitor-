@@ -150,6 +150,7 @@ function calcProducto(nombre) {
   const s = sesionActiva();
   const lotes = s.lotes.filter(l => l.nombre === nombre);
   const ventas = s.ventas.filter(v => v.nombre === nombre);
+
   let stockActual = 0, stockTotal = 0, invertido = 0, costoRestante = 0;
   lotes.forEach(l => {
     stockActual += l.cantidadRestante;
@@ -157,18 +158,66 @@ function calcProducto(nombre) {
     invertido += l.costoTotal;
     costoRestante += l.costoUnitario * l.cantidadRestante;
   });
-  let vendidas = 0, ganancia = 0;
-  ventas.forEach(v => { vendidas += v.cantidad; ganancia += v.ganancia; });
-  const costoProm = stockActual > 0 ? costoRestante / stockActual : (stockTotal > 0 ? invertido / stockTotal : 0);
+
+  let vendidas = 0, ganancia = 0, ingresos = 0, costoVendido = 0;
+  ventas.forEach(v => {
+    vendidas += v.cantidad;
+    ganancia += v.ganancia;
+    ingresos += v.ingreso;
+    costoVendido += v.costo;
+  });
+
+  // Costo promedio del stock restante (o histórico si no queda)
+  const costoProm = stockActual > 0
+    ? costoRestante / stockActual
+    : (stockTotal > 0 ? invertido / stockTotal : 0);
+
   const precioVenta = s.precios[nombre];
-  // ganancia potencial = ganancia actual + (stock * (precio - costo prom))
-  let gananciaFull = ganancia;
+
+  // Ganancia pendiente = solo stock restante × margen
+  let gananciaPendiente = 0;
   if (precioVenta != null && stockActual > 0) {
-    gananciaFull += stockActual * (precioVenta - costoProm);
+    gananciaPendiente = stockActual * (precioVenta - costoProm);
   }
+  const gananciaProyectada = ganancia + gananciaPendiente;
+
+  // Margen
+  const margenUnit = precioVenta != null ? precioVenta - costoProm : null;
+  const margenPct = precioVenta != null && precioVenta > 0
+    ? ((precioVenta - costoProm) / precioVenta) * 100
+    : null;
+
+  // Valor del stock
+  const valorCosto = costoRestante;
+  const valorVenta = precioVenta != null ? stockActual * precioVenta : null;
+
+  // ROI sobre lo invertido (ganancia ya realizada / invertido)
+  const roi = invertido > 0 ? (ganancia / invertido) * 100 : null;
+
+  // Ingreso si vendes TODAS las unidades al precio establecido
+  const ingresoTotal = precioVenta != null ? stockTotal * precioVenta : null;
+
+  // Última venta
+  let ultimaVenta = null;
+  if (ventas.length > 0) {
+    const ord = [...ventas].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    ultimaVenta = ord[0].fecha;
+  }
+
   return {
-    nombre, lotes: lotes.length, stockActual, stockTotal, invertido,
-    costoProm, precioVenta, vendidas, ganancia, gananciaFull, ventas
+    nombre,
+    lotesList: lotes,
+    lotes: lotes.length,
+    stockActual, stockTotal, invertido,
+    costoProm, precioVenta, vendidas,
+    ganancia, gananciaPendiente, gananciaProyectada,
+    ingresos, costoVendido,
+    margenUnit, margenPct,
+    valorCosto, valorVenta, roi,
+    ingresoTotal,
+    numVentas: ventas.length,
+    ultimaVenta,
+    ventas
   };
 }
 
@@ -223,20 +272,92 @@ function renderInventario() {
 function abrirDetalle(nombre) {
   productoDetalle = nombre;
   const p = calcProducto(nombre);
+
   document.getElementById("detalle-nombre").textContent = nombre;
   document.getElementById("det-stock").textContent = p.stockActual + "/" + p.stockTotal;
   document.getElementById("det-invertido").textContent = dinero(p.invertido);
+
   const gEl = document.getElementById("det-ganancia");
   gEl.textContent = dinero(p.ganancia);
   gEl.className = "value" + (p.ganancia < 0 ? " negativo" : "");
-  document.getElementById("det-ganancia-full").textContent = dinero(p.gananciaFull);
+
+  const pEl = document.getElementById("det-ganancia-full");
+  pEl.textContent = dinero(p.gananciaPendiente);
+  pEl.className = "value" + (p.gananciaPendiente < 0 ? " negativo" : "");
+
+  const ingTot = document.getElementById("det-ingreso-total");
+  if (ingTot) ingTot.textContent = p.ingresoTotal != null ? dinero(p.ingresoTotal) : "—";
+
   document.getElementById("det-costo-prom").textContent = dinero(p.costoProm);
   document.getElementById("det-precio-venta").textContent = p.precioVenta != null ? dinero(p.precioVenta) : "—";
+  document.getElementById("det-margen-unit").textContent = p.margenUnit != null ? dinero(p.margenUnit) : "—";
+  document.getElementById("det-margen-pct").textContent = p.margenPct != null ? p.margenPct.toFixed(1) + "%" : "—";
+  document.getElementById("det-ingresos").textContent = dinero(p.ingresos);
+  document.getElementById("det-costo-vendido").textContent = dinero(p.costoVendido);
+  document.getElementById("det-valor-costo").textContent = dinero(p.valorCosto);
+  document.getElementById("det-valor-venta").textContent = p.valorVenta != null ? dinero(p.valorVenta) : "—";
+  document.getElementById("det-proyectado").textContent = dinero(p.gananciaProyectada);
+  document.getElementById("det-roi").textContent = p.roi != null ? p.roi.toFixed(1) + "%" : "—";
+
   document.getElementById("det-lotes").textContent = p.lotes;
   document.getElementById("det-vendidas").textContent = p.vendidas;
+  document.getElementById("det-num-ventas").textContent = p.numVentas;
+  document.getElementById("det-ultima-venta").textContent = p.ultimaVenta ? formatearFecha(p.ultimaVenta) : "—";
+
+  // Lista de lotes
+  const contLotes = document.getElementById("det-lista-lotes");
+  if (!p.lotesList || p.lotesList.length === 0) {
+    contLotes.innerHTML = `<div class="empty" style="padding:12px">Sin lotes</div>`;
+  } else {
+    const ordL = [...p.lotesList].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    contLotes.innerHTML = `<ul class="lista">` + ordL.map(l => `
+      <li class="${l.cantidadRestante === 0 ? 'agotado' : ''}">
+        <div class="item-header">
+          <span class="item-nombre">${l.cantidadRestante}/${l.cantidadInicial} uds</span>
+          <span class="item-fecha">${formatearFecha(l.fecha)}</span>
+        </div>
+        <div class="item-detalle">
+          Costo total: ${dinero(l.costoTotal)} · Unit: ${dinero(l.costoUnitario)}
+        </div>
+      </li>
+    `).join("") + `</ul>`;
+  }
+
+  // Últimas ventas (máx 8)
+  const contVentas = document.getElementById("det-lista-ventas");
+  if (!p.ventas || p.ventas.length === 0) {
+    contVentas.innerHTML = `<div class="empty" style="padding:12px">Sin ventas</div>`;
+  } else {
+    const ordV = [...p.ventas].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 8);
+    contVentas.innerHTML = `<ul class="lista">` + ordV.map(v => `
+      <li class="venta">
+        <div class="item-header">
+          <span class="item-nombre">${v.cantidad} uds × ${dinero(v.precioUnitario)}</span>
+          <span class="item-fecha">${formatearFecha(v.fecha)}</span>
+        </div>
+        <div class="item-detalle">
+          Ingreso: ${dinero(v.ingreso)} · Ganancia: ${dinero(v.ganancia)}
+        </div>
+      </li>
+    `).join("") + `</ul>`;
+  }
 
   irA("detalle");
   setTimeout(() => renderChartProducto(p), 50);
+}
+
+function ventaRapidaDesdeDetalle() {
+  if (!productoDetalle) return;
+  irA("venta");
+  const sel = document.getElementById("venta-producto");
+  actualizarSelectProductos();
+  for (const opt of sel.options) {
+    if (opt.value === productoDetalle) {
+      sel.value = productoDetalle;
+      onProductoVentaChange();
+      break;
+    }
+  }
 }
 
 function cerrarDetalle() {
